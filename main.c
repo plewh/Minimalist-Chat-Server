@@ -9,7 +9,11 @@ int main(int argv, char** argc) {
 		exit(1);
 	}
 
+	fprintf(stderr, "MinChat Server!\n");
+
 	serv_t* server = Srv_NewServer(argc[1]);
+	printf("\E[34m[*]\E[0m New server created\n");
+
 	Srv_DoTheThing(server);
 
 	return 0;

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #define MAX_BACKLOG 30
 
@@ -14,13 +15,12 @@ serv_t* Srv_NewServer(char* port) {
 	for (int j = 0; j < MAX_RCONNS; ++j)
 		s->rhost[j] = NULL;
 
+	srand(time(NULL));
 	return s;
 
 }
 
 void Srv_DoTheThing(serv_t* server) {
-
-	fprintf(stderr, "%s\n", server->lhost_port);
 
 	// get list of available sockets (we'll always use the first one)
 	memset(&server->lhost_hints, 0, sizeof(server->lhost_hints));
@@ -42,8 +42,15 @@ void Srv_DoTheThing(serv_t* server) {
 		server->lhost_addr->ai_addrlen
 	);
 
+	printf(
+		"\E[34m[*]\E[0m Opened new socket on port %s, bound to fd %d\n", 
+		server->lhost_port,
+		server->lhost_listen_fd
+	);
+
 	// set port to LISTEN state (we're going to be a server)
 	listen(server->lhost_listen_fd, MAX_BACKLOG);
+	printf("\E[34m[*]\E[0m Set port %s to LISTEN state\n", server->lhost_port);
 
 	// add listener to master list of fds
 	FD_SET(server->lhost_listen_fd, &server->mSet);
@@ -99,6 +106,7 @@ void Srv_DoTheThing(serv_t* server) {
 					Srv_NewRhost(server, newfd);
 					Srv_SendWelc(server, newfd);
 					Srv_SendMotd(server, newfd);
+					Srv_SendNewConnNotify(server, newfd);
 
 				// this fd is not the listening port, so ISSET means rhost is sending data
 				} else {
@@ -174,6 +182,7 @@ void Srv_NewRhost(serv_t* server, int fd) {
 
 	strcpy(r->prevHandle, "ANON");
 	strcpy(r->handle, "ANON");
+	r->rTag = rand() % MAX_TAG; // TODO: Prevent collisions
 
 	server->rhost[fd] = r;
 
@@ -181,6 +190,9 @@ void Srv_NewRhost(serv_t* server, int fd) {
 
 void Srv_SendMess(serv_t* server, char* buf, int recv_fd) {
 
+	// for each fd in list, send() the read data
+	// (after checking we aren't sending to listening port
+	// or sending back to the rhost that sent the data)
 	for(int j = 0; j <= server->mSetMax; ++j)
 		if (FD_ISSET(j, &server->mSet))
 			if (j != server->lhost_listen_fd && j != recv_fd)
@@ -190,14 +202,11 @@ void Srv_SendMess(serv_t* server, char* buf, int recv_fd) {
 
 void Srv_FormMess(serv_t* server, char* buf, char* nBuf, int recv_fd) {
 
-	// for each fd in list, send() the read data
-	// (after checking we aren't sending to listening port
-	// or sending back to the rhost that sent the data)
-	strcpy(nBuf, "\E[32m");
-	strcat(nBuf, server->rhost[recv_fd]->handle);
-	strcat(nBuf, "\E[0m");
-	strcat(nBuf, " | ");
-	strcat(nBuf, buf); // todo: use strncat
+	sprintf(nBuf, "\E[32m%03d %s\E[0m | %s",  // TODO: Don't use sprintf you moron
+		server->rhost[recv_fd]->rTag,
+		server->rhost[recv_fd]->handle,
+		buf
+	);
 
 }
 
@@ -239,5 +248,20 @@ void Srv_SendHandleUpdate(serv_t* server, int fd) {
 		if (FD_ISSET(j, &server->mSet))
 			if (j != server->lhost_listen_fd && j != fd)
 				send(j, buf, strlen(buf), 0);
+
+}
+
+void Srv_SendNewConnNotify(serv_t* server, int newfd) {
+
+	char buf[MAX_BUF];
+	memset(buf, 0, sizeof(buf));
+
+	sprintf(
+		buf, 
+		"\E[33mSERV\E[0m | New connection from %s\n",
+		server->rhost[newfd]->handle
+	);
+
+	Srv_SendMess(server, buf, newfd);
 
 }

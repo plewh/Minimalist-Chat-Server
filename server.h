@@ -5,11 +5,13 @@
 #define MAX_RCONNS     10
 #define MAX_RECV_BYTES 1400
 #define MAX_BUF        1400
+#define MAX_TAG        999
 
 typedef struct {
 
 	char prevHandle[MAX_BUF];
 	char handle[MAX_BUF];
+	int  rTag;
 
 } rhost_t;
 
@@ -27,11 +29,12 @@ typedef struct {
 
 } serv_t;
 
-serv_t*  Srv_NewServer  (char* port);
-void     Srv_DoTheThing (serv_t* server);
-void     Srv_NewRhost   (serv_t* server, int fd);
-void     Srv_SendMess   (serv_t* server, char* buf, int recv_fd);
-void     Srv_FormMess   (serv_t* server, char* buf, char* nBuf, int recv_fd);
-void     Srv_SendMotd   (serv_t* server, int fd);
-void     Srv_SendWelc   (serv_t* server, int fd);
-void     Srv_SendHandleUpdate(serv_t* server, int fd);
+serv_t*  Srv_NewServer         (char* port);
+void     Srv_DoTheThing        (serv_t* server);
+void     Srv_NewRhost          (serv_t* server, int fd);
+void     Srv_SendMess          (serv_t* server, char* buf, int recv_fd);
+void     Srv_FormMess          (serv_t* server, char* buf, char* nBuf, int recv_fd);
+void     Srv_SendMotd          (serv_t* server, int fd);
+void     Srv_SendWelc          (serv_t* server, int fd);
+void     Srv_SendHandleUpdate  (serv_t* server, int fd);
+void     Srv_SendNewConnNotify (serv_t* server, int newfd);
