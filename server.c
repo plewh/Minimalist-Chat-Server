@@ -12,6 +12,15 @@ serv_t* Srv_NewServer(char* port) {
 	serv_t* s = malloc(sizeof(serv_t));
 
 	s->lhost_port = port;
+	s->motd = Srv_LoadMotd("./motd");
+	if (s->motd) {
+		printf("\E[34m[*]\E[0m MOTD loaded\n");
+		s->motd_flag = 1;
+	} else {
+		printf("\E[33m[*]\E[0m MOTD not loaded\n");
+		s->motd_flag = 0;
+	}
+
 	for (int j = 0; j < MAX_RCONNS; ++j)
 		s->rhost[j] = NULL;
 
@@ -105,7 +114,8 @@ void Srv_DoTheThing(serv_t* server) {
 
 					Srv_NewRhost(server, newfd);
 					Srv_SendWelc(server, newfd);
-					Srv_SendMotd(server, newfd);
+					if (server->motd_flag)
+						Srv_SendMotd(server, newfd);
 					Srv_SendNewConnNotify(server, newfd);
 
 				// this fd is not the listening port, so ISSET means rhost is sending data
@@ -214,9 +224,7 @@ void Srv_SendMotd(serv_t* server, int fd) {
 
 	char motd[MAX_BUF];
 	memset(motd, 0, sizeof(motd));
-	strcpy(motd, "\E[33mSERV\E[0m | ");
-	strcat(motd, "MOTD: That is not dead which can eternal lie, And with strange aeons even death may die.");
-	strcat(motd, "\n");
+	sprintf(motd, "\E[33mSERV\E[0m | MOTD: %s", server->motd);
 	send(fd, motd, strlen(motd), 0);
 
 }
@@ -263,5 +271,21 @@ void Srv_SendNewConnNotify(serv_t* server, int newfd) {
 	);
 
 	Srv_SendMess(server, buf, newfd);
+
+}
+
+char* Srv_LoadMotd(char* fPath) {
+
+	char* buf = malloc(MAX_BUF);
+	memset(buf, 0, MAX_BUF);
+	size_t siz = MAX_BUF;
+	
+	FILE* f = fopen(fPath, "r");
+	if (f == NULL)
+		return NULL;
+	getline(&buf, &siz, f);
+	fclose(f);
+	
+	return buf;
 
 }

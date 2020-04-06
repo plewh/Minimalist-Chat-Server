@@ -19,6 +19,8 @@ typedef struct {
 
 	rhost_t*          rhost[MAX_RCONNS];// remote host info
 	char*             lhost_port;		// port that server listens on
+	int               motd_flag;
+	char*             motd;
 
 	struct addrinfo   lhost_hints;		// the requirements we need for our socket
 	struct addrinfo*  lhost_addr;		// the actual socket info
@@ -38,3 +40,4 @@ void     Srv_SendMotd          (serv_t* server, int fd);
 void     Srv_SendWelc          (serv_t* server, int fd);
 void     Srv_SendHandleUpdate  (serv_t* server, int fd);
 void     Srv_SendNewConnNotify (serv_t* server, int newfd);
+char*    Srv_LoadMotd          (char* fPath);
